@@ -41,7 +41,7 @@ struct TestCase {
 
 impl TestCase {
     fn run(&self) -> bool {
-        let mut bus = TestBus::new();
+        let bus = TestBus::new();
         let mut cpu = CPU::new(bus);
         cpu.program_counter = self.init.program_counter;
         cpu.stack_pointer = self.init.stack_pointer;

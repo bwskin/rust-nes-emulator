@@ -13,7 +13,7 @@ pub struct CPU {
     pub stack_pointer: u8,
     pub status: u8,
     pub program_counter: u16,
-    pub jmp_compat: bool
+    pub jmp_compat: bool,
     pub bus: Box<dyn Bus>
 }
 
