@@ -20,18 +20,14 @@ pub struct AddressResult {
 }
 
 impl crate::cpu::CPU {
-    pub fn mem_read(&self, addr: u16) -> u8 {
-        self.memory[addr as usize]
-    }
-
     pub fn stack_push(&mut self, value: u8) {
-        self.mem_write((0x01 << 8) + self.stack_pointer as u16, value);
+        self.bus.mem_write((0x01 << 8) + self.stack_pointer as u16, value);
         self.stack_pointer = self.stack_pointer.overflowing_sub(1).0;
     }
 
     pub fn stack_push_u16(&mut self, value: u16) {
-        self.mem_write((0x01 << 8) + self.stack_pointer as u16, (value >> 8) as u8);
-        self.mem_write(
+        self.bus.mem_write((0x01 << 8) + self.stack_pointer as u16, (value >> 8) as u8);
+        self.bus.mem_write(
             (0x01 << 8) + self.stack_pointer.overflowing_sub(1).0 as u16,
             (value & 0xff) as u8,
         );
@@ -39,33 +35,16 @@ impl crate::cpu::CPU {
     }
 
     pub fn stack_pop(&mut self) -> u8 {
-        let value = self.mem_read((0x01 << 8) + self.stack_pointer.overflowing_add(1).0 as u16);
+        let value = self.bus.mem_read((0x01 << 8) + self.stack_pointer.overflowing_add(1).0 as u16);
         self.stack_pointer = self.stack_pointer.overflowing_add(1).0;
         value
     }
 
     pub fn stack_pop_u16(&mut self) -> u16 {
-        let lo = self.mem_read((0x01 << 8) + self.stack_pointer.overflowing_add(1).0 as u16);
-        let hi = self.mem_read((0x01 << 8) + self.stack_pointer.overflowing_add(2).0 as u16);
+        let lo = self.bus.mem_read((0x01 << 8) + self.stack_pointer.overflowing_add(1).0 as u16);
+        let hi = self.bus.mem_read((0x01 << 8) + self.stack_pointer.overflowing_add(2).0 as u16);
         self.stack_pointer = self.stack_pointer.overflowing_add(2).0;
         ((hi as u16) << 8) + lo as u16
-    }
-
-    pub fn mem_write(&mut self, addr: u16, data: u8) {
-        self.memory[addr as usize] = data;
-    }
-
-    pub fn mem_read_u16(&self, addr: u16) -> u16 {
-        (self.mem_read(addr.wrapping_add(1)) as u16) << 8 | (self.mem_read(addr) as u16)
-    }
-
-    pub fn mem_read_u16_zero_page(&self, addr: u16) -> u16 {
-        (self.mem_read(addr.wrapping_add(1) % 256) as u16) << 8 | (self.mem_read(addr % 256) as u16)
-    }
-
-    pub fn mem_write_u16(&mut self, addr: u16, data: u16) {
-        self.mem_write(addr, (data & 0xff) as u8);
-        self.mem_write(addr + 1, (data >> 8) as u8);
     }
 
     pub fn pop_next(&mut self) -> u16 {
@@ -76,7 +55,7 @@ impl crate::cpu::CPU {
 
     pub fn pop_read(&mut self) -> u8 {
         let addr = self.pop_next();
-        self.mem_read(addr)
+        self.bus.mem_read(addr)
     }
 
     pub fn pop_read_u16(&mut self) -> u16 {
@@ -91,15 +70,15 @@ impl crate::cpu::CPU {
             },
             AddressingMode::Indirect => AddressResult {
                 address: {
-                    let address = self.mem_read_u16(self.program_counter);
+                    let address = self.bus.mem_read_u16(self.program_counter);
 
                     // This is to replicate bug that occurs in 6502 JMP indirect addressing
                     // https://www.nesdev.org/obelisk-6502-guide/reference.html#JMP
                     if address & 0xFF == 0xFF && self.jmp_compat {
-                        ((self.mem_read(address & 0xFF00) as u16) << 8)
-                            + self.mem_read(address) as u16
+                        ((self.bus.mem_read(address & 0xFF00) as u16) << 8)
+                            + self.bus.mem_read(address) as u16
                     } else {
-                        self.mem_read_u16(address)
+                        self.bus.mem_read_u16(address)
                     }
                 },
                 page_crossed: false,
@@ -150,7 +129,7 @@ impl crate::cpu::CPU {
             AddressingMode::IndirectX => AddressResult {
                 address: {
                     let immediate_address_part = self.pop_read();
-                    self.mem_read_u16_zero_page(
+                    self.bus.mem_read_u16_zero_page(
                         immediate_address_part.wrapping_add(self.register_x) as u16
                     )
                 },
@@ -158,7 +137,7 @@ impl crate::cpu::CPU {
             },
             AddressingMode::IndirectY => {
                 let immediate_address_part = self.pop_read();
-                let indirect_address_no_index = self.mem_read_u16_zero_page(immediate_address_part as u16);
+                let indirect_address_no_index = self.bus.mem_read_u16_zero_page(immediate_address_part as u16);
 
                 AddressResult {
                     address: indirect_address_no_index.wrapping_add(self.register_y as u16),

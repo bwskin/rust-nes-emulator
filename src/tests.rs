@@ -1,6 +1,7 @@
 #![allow(dead_code)]
 
 use super::cpu::CPU;
+use super::bus::TestBus;
 use serde::Deserialize;
 use paste::paste;
 
@@ -40,7 +41,8 @@ struct TestCase {
 
 impl TestCase {
     fn run(&self) -> bool {
-        let mut cpu = CPU::new();
+        let mut bus = TestBus::new();
+        let mut cpu = CPU::new(bus);
         cpu.program_counter = self.init.program_counter;
         cpu.stack_pointer = self.init.stack_pointer;
         cpu.register_a = self.init.register_a;
@@ -49,7 +51,7 @@ impl TestCase {
         cpu.status = self.init.status;
 
         for ram_entry in self.init.ram.iter() {
-            cpu.mem_write(ram_entry.addr, ram_entry.value);
+            cpu.bus.mem_write(ram_entry.addr, ram_entry.value);
         }
 
         cpu.next();
@@ -85,7 +87,7 @@ impl TestCase {
         };
 
         for ram_entry in self.result.ram.iter() {
-            let value = cpu.mem_read(ram_entry.addr);
+            let value = cpu.bus.mem_read(ram_entry.addr);
             if value != ram_entry.value {
                 print!(
                     "Memory at address 0x{:04x} invalid: {:04x} should be {:04x}; ",

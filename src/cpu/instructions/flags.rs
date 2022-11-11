@@ -16,6 +16,7 @@ macro_rules! flag {
     };
 }
 
+#[allow(dead_code)] // !TODO: Handle unused flags
 impl crate::cpu::CPU {
     flag! { carry,             0b0000_0001 }
     flag! { zero,              0b0000_0010 }

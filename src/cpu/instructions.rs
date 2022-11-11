@@ -225,7 +225,7 @@ impl crate::cpu::CPU {
             page_crossed,
         } = self.get_operand_address(mode);
 
-        let value = self.mem_read(address);
+        let value = self.bus.mem_read(address);
 
         let (result, overflow) = self.register_a.overflowing_add(value);
         let (result, overflow_carry) = result.overflowing_add(self.get_carry_flag());
@@ -254,7 +254,7 @@ impl crate::cpu::CPU {
     pub(super) fn and(&mut self, mode: &AddressingMode) -> u8 {
         let AddressResult { address, page_crossed } = self.get_operand_address(mode);
 
-        let value = self.mem_read(address);
+        let value = self.bus.mem_read(address);
 
         self.register_a = self.register_a & value;
         self.calc_zero_flag(self.register_a);
@@ -283,11 +283,11 @@ impl crate::cpu::CPU {
             mode => {
                 let AddressResult { address, .. } = self.get_operand_address(mode);
 
-                let value = self.mem_read(address);
+                let value = self.bus.mem_read(address);
                 self.set_carry_flag(value >> 7);
 
                 let new_value = value.overflowing_shl(1).0;
-                self.mem_write(address, new_value);
+                self.bus.mem_write(address, new_value);
                 self.calc_zero_flag(new_value);
                 self.calc_negative_flag(new_value);
             }
@@ -332,7 +332,7 @@ impl crate::cpu::CPU {
     pub(super) fn bit(&mut self, mode: &AddressingMode) -> u8 {
         let AddressResult { address, .. } = self.get_operand_address(mode);
 
-        let value = self.mem_read(address);
+        let value = self.bus.mem_read(address);
         self.calc_zero_flag(value & self.register_a);
         self.set_overflow_flag((value & 0b0100_0000) >> 6);
         self.set_negative_flag((value & 0b1000_0000) >> 7);
@@ -427,7 +427,7 @@ impl crate::cpu::CPU {
     pub(super) fn cmp(&mut self, mode: &AddressingMode) -> u8 {
         let AddressResult { address, .. } = self.get_operand_address(mode);
 
-        let value = self.mem_read(address);
+        let value = self.bus.mem_read(address);
 
         if self.register_a >= value {
             self.set_carry_flag(1)
@@ -453,7 +453,7 @@ impl crate::cpu::CPU {
     pub(super) fn cpx(&mut self, mode: &AddressingMode) -> u8 {
         let AddressResult { address, .. } = self.get_operand_address(mode);
 
-        let value = self.mem_read(address);
+        let value = self.bus.mem_read(address);
 
         if self.register_x >= value {
             self.set_carry_flag(1)
@@ -479,7 +479,7 @@ impl crate::cpu::CPU {
     pub(super) fn cpy(&mut self, mode: &AddressingMode) -> u8 {
         let AddressResult { address, .. } = self.get_operand_address(mode);
 
-        let value = self.mem_read(address);
+        let value = self.bus.mem_read(address);
 
         if self.register_y >= value {
             self.set_carry_flag(1)
@@ -505,9 +505,9 @@ impl crate::cpu::CPU {
     pub(super) fn dec(&mut self, mode: &AddressingMode) -> u8 {
         let AddressResult { address, .. } = self.get_operand_address(mode);
 
-        let mut value = self.mem_read(address);
+        let mut value = self.bus.mem_read(address);
         value = value.overflowing_sub(1).0;
-        self.mem_write(address, value);
+        self.bus.mem_write(address, value);
 
         self.calc_zero_flag(value);
         self.calc_negative_flag(value);
@@ -536,7 +536,7 @@ impl crate::cpu::CPU {
     pub(super) fn eor(&mut self, mode: &AddressingMode) -> u8 {
         let AddressResult { address, .. } = self.get_operand_address(mode);
 
-        let value = self.mem_read(address);
+        let value = self.bus.mem_read(address);
 
         self.register_a = self.register_a ^ value;
 
@@ -566,9 +566,9 @@ impl crate::cpu::CPU {
     pub(super) fn inc(&mut self, mode: &AddressingMode) -> u8 {
         let AddressResult { address, .. } = self.get_operand_address(mode);
 
-        let mut value = self.mem_read(address);
+        let mut value = self.bus.mem_read(address);
         value = value.overflowing_add(1).0;
-        self.mem_write(address, value);
+        self.bus.mem_write(address, value);
 
         self.calc_zero_flag(value);
         self.calc_negative_flag(value);
@@ -597,7 +597,7 @@ impl crate::cpu::CPU {
     pub(super) fn lda(&mut self, mode: &AddressingMode) -> u8 {
         let AddressResult { address, .. } = self.get_operand_address(mode);
 
-        let value = self.mem_read(address);
+        let value = self.bus.mem_read(address);
 
         self.register_a = value;
         self.calc_zero_flag(self.register_a);
@@ -609,7 +609,7 @@ impl crate::cpu::CPU {
     pub(super) fn ldx(&mut self, mode: &AddressingMode) -> u8 {
         let AddressResult { address, .. } = self.get_operand_address(mode);
 
-        let value = self.mem_read(address);
+        let value = self.bus.mem_read(address);
 
         self.register_x = value;
         self.calc_zero_flag(self.register_x);
@@ -621,7 +621,7 @@ impl crate::cpu::CPU {
     pub(super) fn ldy(&mut self, mode: &AddressingMode) -> u8 {
         let AddressResult { address, .. } = self.get_operand_address(mode);
 
-        let value = self.mem_read(address);
+        let value = self.bus.mem_read(address);
 
         self.register_y = value;
         self.calc_zero_flag(self.register_y);
@@ -641,11 +641,11 @@ impl crate::cpu::CPU {
             mode => {
                 let AddressResult { address, .. } = self.get_operand_address(mode);
 
-                let value = self.mem_read(address);
+                let value = self.bus.mem_read(address);
                 self.set_carry_flag(value & 0b0000_0001);
 
                 let new_value = value.overflowing_shr(1).0;
-                self.mem_write(address, new_value);
+                self.bus.mem_write(address, new_value);
                 self.calc_zero_flag(new_value);
                 self.calc_negative_flag(new_value);
             }
@@ -657,7 +657,7 @@ impl crate::cpu::CPU {
     pub(super) fn ora(&mut self, mode: &AddressingMode) -> u8 {
         let AddressResult { address, .. } = self.get_operand_address(mode);
 
-        let value = self.mem_read(address);
+        let value = self.bus.mem_read(address);
 
         self.register_a = self.register_a | value;
 
@@ -712,13 +712,13 @@ impl crate::cpu::CPU {
             mode => {
                 let AddressResult { address, .. } = self.get_operand_address(mode);
 
-                let mut value = self.mem_read(address);
+                let mut value = self.bus.mem_read(address);
 
                 self.set_carry_flag(value >> 7);
                 value = value.overflowing_shl(1).0;
                 value += old_carry;
 
-                self.mem_write(address, value);
+                self.bus.mem_write(address, value);
                 self.calc_zero_flag(value);
                 self.calc_negative_flag(value);
             }
@@ -741,13 +741,13 @@ impl crate::cpu::CPU {
             mode => {
                 let AddressResult { address, .. } = self.get_operand_address(mode);
 
-                let mut value = self.mem_read(address);
+                let mut value = self.bus.mem_read(address);
 
                 self.set_carry_flag(value & 1);
                 value = value.overflowing_shr(1).0;
                 value += old_carry << 7;
 
-                self.mem_write(address, value);
+                self.bus.mem_write(address, value);
                 self.calc_zero_flag(value);
                 self.calc_negative_flag(value);
             }
@@ -811,7 +811,7 @@ impl crate::cpu::CPU {
     pub(super) fn sbc(&mut self, mode: &AddressingMode) -> u8 {
         let AddressResult { address, .. } = self.get_operand_address(mode);
 
-        let value = self.mem_read(address);
+        let value = self.bus.mem_read(address);
 
         let (result, overflow) = self.register_a.overflowing_sub(value);
         let (result, overflow_carry) = result.overflowing_sub(self.get_carry_flag() ^ 1);
@@ -850,7 +850,7 @@ impl crate::cpu::CPU {
     pub(super) fn sta(&mut self, mode: &AddressingMode) -> u8 {
         let AddressResult { address, .. } = self.get_operand_address(mode);
 
-        self.mem_write(address, self.register_a);
+        self.bus.mem_write(address, self.register_a);
 
         return 0;
     }
@@ -858,7 +858,7 @@ impl crate::cpu::CPU {
     pub(super) fn stx(&mut self, mode: &AddressingMode) -> u8 {
         let AddressResult { address, .. } = self.get_operand_address(mode);
 
-        self.mem_write(address, self.register_x);
+        self.bus.mem_write(address, self.register_x);
 
         return 0;
     }
@@ -866,7 +866,7 @@ impl crate::cpu::CPU {
     pub(super) fn sty(&mut self, mode: &AddressingMode) -> u8 {
         let AddressResult { address, .. } = self.get_operand_address(mode);
 
-        self.mem_write(address, self.register_y);
+        self.bus.mem_write(address, self.register_y);
 
         return 0;
     }

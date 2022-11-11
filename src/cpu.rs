@@ -4,6 +4,8 @@ pub mod memory;
 pub mod instructions;
 use instructions::OPCODES;
 
+use crate::bus::Bus;
+
 pub struct CPU {
     pub register_a: u8,
     pub register_x: u8,
@@ -11,8 +13,8 @@ pub struct CPU {
     pub stack_pointer: u8,
     pub status: u8,
     pub program_counter: u16,
-    memory: [u8; 65536],
     pub jmp_compat: bool
+    pub bus: Box<dyn Bus>
 }
 
 #[allow(dead_code)]
@@ -22,7 +24,7 @@ pub struct InstructionResult {
 }
 
 impl CPU {
-    pub fn new() -> Self {
+    pub fn new(bus: Box<dyn Bus>) -> Self {
         CPU {
             register_a: 0,
             register_x: 0,
@@ -30,8 +32,8 @@ impl CPU {
             stack_pointer: 0,
             status: 0,
             program_counter: 0,
-            memory: [0x00; 65536],
-            jmp_compat: true
+            jmp_compat: true,
+            bus,
         }
     }
 
@@ -42,29 +44,24 @@ impl CPU {
         self.stack_pointer = 0;
         self.status = 0;
 
-        self.program_counter = self.mem_read_u16(0xFFFC);
-    }
-
-    pub fn load_and_run(&mut self, program: Vec<u8>) {
-        self.load(program);
-        self.reset();
-        self.run();
-    }
-
-    pub fn load(&mut self, program: Vec<u8>) {
-        self.memory[0x8000..(0x8000 + program.len())].copy_from_slice(&program[..]);
-        self.mem_write_u16(0xFFFC, 0x8000);
-    }
-
-    pub fn load_to_specific_address(&mut self, addr: u16, program: Vec<u8>) {
-        self.memory[(addr as usize)..(addr as usize + program.len())].copy_from_slice(&program[..]);
-        self.mem_write_u16(0xFFFC, addr);
+        self.program_counter = self.bus.mem_read_u16(0xFFFC);
     }
 
     pub fn run(&mut self) {
         loop {
             let result = self.next();
             if result.end_of_program { break };
+        }
+    }
+
+    pub fn run_with_callback(&mut self, mut callback: impl FnMut(&mut CPU, u8) -> ()) {
+        callback(self, 0);
+        loop {
+            let result = self.next();
+            if result.end_of_program {
+                break;
+            };
+            callback(self, result.cycles);
         }
     }
 
