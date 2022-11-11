@@ -1,3 +1,5 @@
+use crate::rom::Rom;
+
 pub trait Bus {
     fn mem_read(&self, addr: u16) -> u8 ;
     fn mem_write(&mut self, addr: u16, data: u8) -> ();
@@ -36,19 +38,6 @@ impl TestBus {
             memory: [0u8; 65536]
         })
     }
-}
-
-
-pub struct NesBus {
-    memory: [u8; 65536]
-}
-
-impl NesBus {
-    pub fn new() -> Box<Self> {
-        Box::new(Self {
-            memory: [0u8; 65536]
-        })
-    }
 
     pub fn load(&mut self, program: Vec<u8>) {
         self.memory[0x8000..(0x8000 + program.len())].copy_from_slice(&program[..]);
@@ -61,12 +50,44 @@ impl NesBus {
     }
 }
 
+
+pub struct NesBus {
+    ram: [u8; 2048],
+    rom: Rom
+}
+
+impl NesBus {
+    pub fn new(rom: Rom) -> Box<Self> {
+        Box::new(Self {
+            ram: [0u8; 2048],
+            rom
+        })
+    }
+
+    pub fn read_prg_rom(&self, mut addr: u16) -> u8 {
+        addr -= 0x8000;
+        if self.rom.prg_rom.len() == 0x4000 && addr >= 0x4000 {
+            addr = addr % 0x4000;
+        }
+        self.rom.prg_rom[addr as usize]
+    }
+}
+
 impl Bus for NesBus {
     fn mem_read(&self, addr: u16) -> u8 {
-        self.memory[addr as usize]
+        match addr {
+            0x0000..=0x1FFF => self.ram[addr as usize],
+            0x8000..=0xFFFF => self.read_prg_rom(addr),
+            _ => todo!()
+        }
+        
     }
 
     fn mem_write(&mut self, addr: u16, data: u8) {
-        self.memory[addr as usize] = data;
+        match addr {
+            0x0000..=0x1FFF => self.ram[addr as usize] = data,
+            0x8000..=0xFFFF => panic!("Attempt to write ROM space"),
+            _ => todo!()
+        }
     }
 }
