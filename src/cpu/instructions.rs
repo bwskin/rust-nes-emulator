@@ -5,7 +5,7 @@ use opcodes::OPCODES;
 // Implemented here:
 // - zero flag handling
 // - negative flag handling
-mod flags;
+pub mod flags; // !TODO: Extract outside of CPU
 use super::memory::{AddressResult, AddressingMode};
 
 OPCODES! {
